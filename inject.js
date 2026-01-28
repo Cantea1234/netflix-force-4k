@@ -446,47 +446,150 @@
   // 15. HANDLE SPA NAVIGATION
   // ============================================
 
-  // Listen for reinit signal from content script
-  window.addEventListener('message', (event) => {
-    if (event.data?.type === 'NETFLIX_4K_REINIT') {
-      console.log('[Netflix 4K] Reinitializing for new page...');
+  let lastWatchId = null;
+  let lastHref = location.href;
 
-      // Reset Cadmium hook state so we re-hook on new player
-      cadmiumHooked = false;
+  // Extract video ID from Netflix URL
+  const getWatchId = () => {
+    const match = location.pathname.match(/\/watch\/(\d+)/);
+    return match ? match[1] : null;
+  };
 
-      // Restart the hook interval
-      const reinitInterval = setInterval(() => {
-        hookCadmium();
-        hookNetflixState();
-        if (cadmiumHooked) {
-          clearInterval(reinitInterval);
+  // Aggressive re-hook function with multiple attempts
+  const forceRehook = (reason) => {
+    console.log(`[Netflix 4K] Force rehook triggered: ${reason}`);
+    cadmiumHooked = false;
+
+    // Multiple attempts at different timings to catch the player
+    const delays = [100, 300, 500, 1000, 2000, 3000];
+    delays.forEach(delay => {
+      setTimeout(() => {
+        if (!cadmiumHooked) {
+          hookCadmium();
+          hookNetflixState();
         }
-      }, 200);
+      }, delay);
+    });
+  };
 
-      setTimeout(() => clearInterval(reinitInterval), 30000);
+  // Watch for URL changes (catches all navigation)
+  const urlObserver = setInterval(() => {
+    if (location.href !== lastHref) {
+      const oldHref = lastHref;
+      lastHref = location.href;
+
+      const newWatchId = getWatchId();
+      const isWatch = location.pathname.startsWith('/watch');
+
+      // Trigger on ANY watch page navigation
+      if (isWatch) {
+        // Different video OR just entered watch page
+        if (newWatchId !== lastWatchId) {
+          console.log(`[Netflix 4K] New video detected: ${newWatchId}`);
+          lastWatchId = newWatchId;
+          forceRehook('new video ID');
+        } else {
+          // Same video but URL changed (maybe episode switch with same ID structure)
+          forceRehook('watch URL changed');
+        }
+      } else {
+        // Left watch page
+        lastWatchId = null;
+      }
+    }
+  }, 200);
+
+  // Watch for new video elements (most reliable signal)
+  const videoCreationObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node.nodeName === 'VIDEO' || (node.querySelector && node.querySelector('video'))) {
+          console.log('[Netflix 4K] New video element detected in DOM');
+          forceRehook('video element added');
+          return;
+        }
+      }
     }
   });
 
-  // Also detect /watch URL ourselves as backup
-  let lastPath = location.pathname;
-  const pathObserver = setInterval(() => {
-    if (location.pathname !== lastPath) {
-      const wasWatch = lastPath.startsWith('/watch');
-      const isWatch = location.pathname.startsWith('/watch');
-      lastPath = location.pathname;
+  videoCreationObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true
+  });
 
-      if (isWatch && !wasWatch) {
-        console.log('[Netflix 4K] Navigated to watch page');
-        cadmiumHooked = false;
-
-        // Give Netflix time to create player, then hook
-        setTimeout(() => {
-          hookCadmium();
-          hookNetflixState();
-        }, 1000);
+  // Watch for Netflix's player container specifically
+  const playerContainerObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node.classList && (
+          node.classList.contains('watch-video') ||
+          node.classList.contains('VideoContainer') ||
+          node.classList.contains('nf-player-container')
+        )) {
+          console.log('[Netflix 4K] Netflix player container added');
+          forceRehook('player container added');
+          return;
+        }
       }
     }
-  }, 300);
+  });
+
+  playerContainerObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true
+  });
+
+  // Intercept History API for immediate detection
+  const wrapHistoryMethod = (method) => {
+    const original = history[method];
+    history[method] = function(...args) {
+      const result = original.apply(this, args);
+
+      // Check if navigating to watch page
+      setTimeout(() => {
+        if (location.href !== lastHref) {
+          lastHref = location.href;
+          const watchId = getWatchId();
+          if (watchId && watchId !== lastWatchId) {
+            console.log(`[Netflix 4K] History ${method} to new video`);
+            lastWatchId = watchId;
+            forceRehook(`history.${method}`);
+          }
+        }
+      }, 50);
+
+      return result;
+    };
+  };
+
+  wrapHistoryMethod('pushState');
+  wrapHistoryMethod('replaceState');
+
+  // Listen for popstate (back/forward navigation)
+  window.addEventListener('popstate', () => {
+    setTimeout(() => {
+      const watchId = getWatchId();
+      if (watchId && watchId !== lastWatchId) {
+        console.log('[Netflix 4K] Popstate to new video');
+        lastWatchId = watchId;
+        forceRehook('popstate');
+      }
+    }, 50);
+  });
+
+  // Listen for reinit signal from content script
+  window.addEventListener('message', (event) => {
+    if (event.data?.type === 'NETFLIX_4K_REINIT') {
+      forceRehook('content script signal');
+    }
+  });
+
+  // Initial check if we're already on a watch page
+  const initialWatchId = getWatchId();
+  if (initialWatchId) {
+    lastWatchId = initialWatchId;
+    console.log(`[Netflix 4K] Initial watch page: ${initialWatchId}`);
+  }
 
   console.log('[Netflix 4K] All spoofs initialized successfully!');
   console.log('[Netflix 4K] Screen: 3840x2160, HDCP: 2.2, Profiles: 4K HEVC/VP9/AV1');

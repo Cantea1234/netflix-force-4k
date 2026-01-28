@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate Extension Icons</title>
+</head>
+<body>
+  <h1>Netflix 4K Enabler - Icon Generator</h1>
+  <p>Right-click each image and "Save image as..." to save as PNG</p>
+
+  <h2>48x48 Icon</h2>
+  <canvas id="icon48" width="48" height="48"></canvas>
+
+  <h2>128x128 Icon</h2>
+  <canvas id="icon128" width="128" height="128"></canvas>
+
+  <script>
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+
+      // Background (Netflix red)
+      ctx.fillStyle = '#E50914';
+      const radius = size * 0.15;
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, radius);
+      ctx.fill();
+
+      // Text
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${size * 0.4}px Arial Black, Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('4K', size / 2, size / 2 + size * 0.05);
+    }
+
+    drawIcon(document.getElementById('icon48'), 48);
+    drawIcon(document.getElementById('icon128'), 128);
+  </script>
+</body>
+</html>
