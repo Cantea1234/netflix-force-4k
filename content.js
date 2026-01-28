@@ -33,23 +33,27 @@
     window.postMessage({ type: 'NETFLIX_4K_REINIT', reason }, '*');
   };
 
+  // Track if this is a fresh page load
+  let isInitialLoad = true;
+  setTimeout(() => { isInitialLoad = false; }, 2000);
+
   // Check for navigation
   const checkNavigation = () => {
     if (location.href !== lastUrl) {
       lastUrl = location.href;
       const videoId = getVideoId();
+      const isWatch = location.pathname.startsWith('/watch');
 
-      if (location.pathname.startsWith('/watch')) {
-        // On a watch page
-        if (videoId !== lastVideoId) {
-          // New video
-          lastVideoId = videoId;
-          signalReinit(`new video ${videoId}`);
-        } else {
-          // Same video, URL still changed
-          signalReinit('watch URL changed');
+      if (isWatch && videoId && videoId !== lastVideoId) {
+        // New video detected via SPA navigation
+        // Force refresh to ensure DRM is negotiated with our spoofs
+        if (!isInitialLoad) {
+          console.log('Netflix 4K Enabler: New video via SPA, refreshing for 4K...');
+          location.reload();
+          return;
         }
-      } else {
+        lastVideoId = videoId;
+      } else if (!isWatch) {
         // Left watch page
         lastVideoId = null;
       }
