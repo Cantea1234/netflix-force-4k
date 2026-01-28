@@ -35,7 +35,7 @@ If you're paying for 4K but using Chrome, Firefox, or a setup Netflix doesn't "a
 ### Step 1: Download the Extension
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/netflix-force-4k.git
+git clone https://github.com/Pickle-Pixel/netflix-force-4k.git
 ```
 
 Or download as ZIP and extract.
