@@ -20,7 +20,7 @@ So I built this extension. And it worked.
 
 ## What It Actually Does
 
-Netflix checks if your setup can handle 4K through JavaScript APIs — screen resolution, HDCP status, codec support, DRM capabilities. Sometimes these checks fail incorrectly, even when your hardware is perfectly capable.
+Netflix checks if your setup can handle 4K through JavaScript APIs: screen resolution, HDCP status, codec support, DRM capabilities. Sometimes these checks fail incorrectly, even when your hardware is perfectly capable.
 
 This extension spoofs those checks to report 4K capability, letting Netflix serve you the stream your hardware can actually play.
 
@@ -41,7 +41,7 @@ Before you get excited, here's what you actually need. No extension can bypass t
 
 ### Browser
 
-**Microsoft Edge on Windows.** That's it. Chrome, Firefox, Brave — none of them work for 4K Netflix.
+**Microsoft Edge on Windows.** That's it. Chrome, Firefox, Brave don't work for 4K Netflix.
 
 Here's the thing most articles get wrong: it's not about "Widevine L1 vs L3." Edge doesn't even use Widevine for Netflix. It uses **PlayReady**, Microsoft's DRM that hooks into Windows at the hardware level.
 
@@ -52,7 +52,7 @@ Here's the thing most articles get wrong: it's not about "Widevine L1 vs L3." Ed
 | Firefox | Widevine L3 | 1080p |
 | Brave | Widevine L3 | 1080p |
 
-Chrome literally cannot access PlayReady. It's not a detection problem — the DRM Netflix requires for 4K doesn't exist in Chrome. No extension can fix that.
+Chrome literally cannot access PlayReady. It's not a detection problem. The DRM Netflix requires for 4K doesn't exist in Chrome. No extension can fix that.
 
 ### Hardware
 
@@ -66,7 +66,7 @@ Why Kaby Lake specifically? Netflix 4K uses 10-bit HEVC. Kaby Lake was the first
 ### Software
 
 - **Windows 10** (Anniversary Update+) or **Windows 11**
-- **HEVC Video Extension** from Microsoft Store — [$0.99](https://apps.microsoft.com/store/detail/hevc-video-extensions/9NMZLZ57R3T7)
+- **HEVC Video Extension** from Microsoft Store ([$0.99](https://apps.microsoft.com/store/detail/hevc-video-extensions/9NMZLZ57R3T7))
 - **Hardware acceleration ON** in Edge (`edge://settings/system`)
 - **Latest GPU drivers**
 
@@ -74,7 +74,7 @@ That HEVC extension is easy to miss. Used to come with Windows, now it's a separ
 
 ### Netflix
 
-- **Premium plan** — 4K requires the top tier
+- **Premium plan** (4K requires the top tier)
 
 ## Who This Helps
 
@@ -90,10 +90,10 @@ Basically: your hardware is capable, but Netflix's JavaScript checks are returni
 
 ## Who This Won't Help
 
-- **Chrome/Firefox users** — no PlayReady, no 4K, period
-- **Pre-Kaby Lake CPUs** — no hardware 10-bit HEVC
-- **Missing HEVC extension** — install it from Microsoft Store
-- **AMD GPU blacklist victims** — some RX 6000/7000 cards are blacklisted by Chromium (workaround below)
+- **Chrome/Firefox users**: no PlayReady, no 4K, period
+- **Pre-Kaby Lake CPUs**: no hardware 10-bit HEVC
+- **Missing HEVC extension**: install it from Microsoft Store
+- **AMD GPU blacklist victims**: some RX 6000/7000 cards are blacklisted by Chromium (workaround below)
 
 ## Installation
 
@@ -121,7 +121,7 @@ Or grab the ZIP.
 ### 4. Verify
 
 1. Go to Netflix
-2. Click the extension icon — should show your setup status
+2. Click the extension icon to see your setup status
 3. Play something with the "Ultra HD 4K" badge
 4. Press `Ctrl+Shift+Alt+D` for Netflix's stats overlay
 
@@ -144,7 +144,7 @@ Work through this:
 3. **Content has 4K badge?** Not everything is 4K
 4. **Premium plan?** Standard maxes at 1080p
 5. **25+ Mbps connection?** [Test here](https://fast.com)
-6. **Try hard refresh** — `Ctrl+Shift+R` on the watch page
+6. **Try hard refresh**: `Ctrl+Shift+R` on the watch page
 
 ### AMD GPU Issues
 
@@ -162,7 +162,7 @@ Go to `edge://gpu` in Edge and look for "Media Foundation Rendering Capabilities
 - `PlayReady Hardware DRM disabled: false` = good
 - `PlayReady Hardware DRM disabled: true` = hardware DRM not working
 
-If it's disabled, the issue is below the browser level — drivers, GPU support, or Windows configuration.
+If it's disabled, the issue is below the browser level. Check drivers, GPU support, or Windows configuration.
 
 ### Netflix App vs Browser
 
@@ -174,9 +174,9 @@ The Netflix app from Microsoft Store is now just Edge in a wrapper. If the app w
 
 Netflix checks multiple layers:
 
-1. **JavaScript APIs** — screen resolution, HDCP, codec support
-2. **DRM negotiation** — PlayReady capabilities (SL2000 software vs SL3000 hardware)
-3. **Hardware verification** — via DRM's trusted execution
+1. **JavaScript APIs**: screen resolution, HDCP, codec support
+2. **DRM negotiation**: PlayReady capabilities (SL2000 software vs SL3000 hardware)
+3. **Hardware verification**: via DRM's trusted execution
 
 This extension fixes layer 1. Layers 2-3 require actual hardware support.
 
