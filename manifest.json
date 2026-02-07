@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Netflix 4K",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Fixes Netflix's broken capability detection to unlock 4K on capable setups",
   "permissions": [
     "storage",
@@ -20,6 +20,13 @@
   "content_scripts": [
     {
       "matches": ["*://*.netflix.com/*"],
+      "js": ["inject.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    },
+    {
+      "matches": ["*://*.netflix.com/*"],
       "js": ["content.js"],
       "run_at": "document_start",
       "all_frames": true
@@ -36,11 +43,5 @@
         "path": "rules.json"
       }
     ]
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["inject.js"],
-      "matches": ["*://*.netflix.com/*"]
-    }
-  ]
+  }
 }

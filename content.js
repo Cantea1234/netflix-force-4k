@@ -3,21 +3,8 @@
 (function() {
   'use strict';
 
-  // Inject the main spoofing script
-  const injectScript = () => {
-    if (document.getElementById('netflix-4k-inject')) return;
-
-    const script = document.createElement('script');
-    script.id = 'netflix-4k-inject';
-    script.src = chrome.runtime.getURL('inject.js');
-    script.onload = function() {
-      this.remove();
-    };
-    (document.head || document.documentElement).appendChild(script);
-  };
-
-  // Inject immediately
-  injectScript();
+  // inject.js is now loaded via manifest.json with world: "MAIN"
+  // for guaranteed early execution before Netflix scripts
 
   // ============================================
   // MESSAGE RELAY: inject.js -> background.js

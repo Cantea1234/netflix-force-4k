@@ -1,5 +1,5 @@
 // Netflix 4K - Main injection script
-// Runs in Netflix page context to spoof capabilities
+// Runs in Netflix page context via MAIN world injection at document_start
 (function() {
   'use strict';
 
@@ -79,6 +79,8 @@
   Object.defineProperty(window.screen, 'colorDepth', { get: () => 48 });
   Object.defineProperty(window.screen, 'pixelDepth', { get: () => 48 });
   Object.defineProperty(window, 'devicePixelRatio', { get: () => 1 });
+  Object.defineProperty(window, 'outerWidth', { get: () => 3840, configurable: true });
+  Object.defineProperty(window, 'outerHeight', { get: () => 2160, configurable: true });
 
   console.log(`[Netflix 4K] Screen: ${realWidth}x${realHeight} -> spoofed to 3840x2160`);
 
@@ -267,47 +269,169 @@
   ];
 
   // ============================================
-  // 9. INTERCEPT OBJECT PROPERTY DEFINITIONS
+  // 9. DEEP CONFIG PATCHER
+  // ============================================
+
+  const _patched = new WeakSet();
+
+  const patchConfigValues = (obj, depth = 0) => {
+    if (!obj || typeof obj !== 'object' || depth > 5) return;
+    if (_patched.has(obj)) return;
+    try { _patched.add(obj); } catch(e) { return; }
+
+    let keys;
+    try { keys = Object.keys(obj); } catch(e) { return; }
+
+    for (const key of keys) {
+      try {
+        const lk = key.toLowerCase();
+        const val = obj[key];
+
+        // Skip audio-only properties
+        if (lk.includes('audio') && !lk.includes('video')) continue;
+
+        if (typeof val === 'number') {
+          // Bitrate caps (skip audio: 'abitrate', 'audiobitrate', or ambiguous values < 500 kbps)
+          if ((lk.includes('bitrate') || lk.includes('bandwidth')) && !lk.includes('min')) {
+            const isAudioProp = lk === 'abitrate' || lk.includes('audio');
+            const isLikelyAudio = val < 500 && !lk.includes('video') && !lk.includes('max') && !lk.includes('init');
+            if (!isAudioProp && !isLikelyAudio && val > 0 && val < 16000) {
+              console.log(`[Netflix 4K] Patched: ${key} ${val} -> 16000`);
+              obj[key] = 16000;
+            }
+          }
+          // Height caps
+          if (lk.includes('height') && !lk.includes('min') && val >= 720 && val < 2160) {
+            console.log(`[Netflix 4K] Patched: ${key} ${val} -> 2160`);
+            obj[key] = 2160;
+          }
+          // Width caps
+          if (lk.includes('width') && !lk.includes('min') && val >= 1280 && val < 3840) {
+            console.log(`[Netflix 4K] Patched: ${key} ${val} -> 3840`);
+            obj[key] = 3840;
+          }
+        }
+
+        // HDCP version
+        if (typeof val === 'string' && (lk === 'hdcp' || lk.includes('hdcp'))) {
+          obj[key] = '2.2';
+        }
+
+        // Resolution object
+        if (lk.includes('resolution') && val && typeof val === 'object' && !Array.isArray(val)) {
+          if (typeof val.width === 'number' && val.width < 3840) val.width = 3840;
+          if (typeof val.height === 'number' && val.height < 2160) val.height = 2160;
+        }
+
+        // Profiles array - prepend 4K profiles
+        if ((lk === 'profiles' || lk === 'videoprofiles') && Array.isArray(val)) {
+          const existing = new Set(val);
+          const toAdd = NETFLIX_4K_PROFILES.filter(p => !existing.has(p));
+          if (toAdd.length > 0) {
+            obj[key] = [...toAdd, ...val];
+          }
+        }
+
+        // Recurse into nested objects
+        if (val && typeof val === 'object' && !Array.isArray(val)) {
+          patchConfigValues(val, depth + 1);
+        }
+      } catch(e) {}
+    }
+  };
+
+  // ============================================
+  // 10. INTERCEPT OBJECT PROPERTY DEFINITIONS
   // ============================================
 
   const originalDefineProperty = Object.defineProperty;
+  const originalDefineProperties = Object.defineProperties;
+
   Object.defineProperty = function(obj, prop, descriptor) {
-    if (typeof prop === 'string') {
-      const lowerProp = prop.toLowerCase();
+    if (typeof prop === 'string' && descriptor && descriptor.value !== undefined) {
+      const lk = prop.toLowerCase();
+      const val = descriptor.value;
 
-      if (lowerProp.includes('maxbitrate') || lowerProp === 'maxbitrate') {
-        if (descriptor.value !== undefined && typeof descriptor.value === 'number') {
-          console.log('[Netflix 4K] Override: maxBitrate', descriptor.value, '-> 16000');
-          descriptor.value = 16000;
+      if (typeof val === 'number') {
+        if ((lk.includes('bitrate') || lk.includes('bandwidth')) && !lk.includes('min')) {
+          const isAudioProp = lk === 'abitrate' || lk.includes('audio');
+          const isLikelyAudio = val < 500 && !lk.includes('video') && !lk.includes('max') && !lk.includes('init');
+          if (!isAudioProp && !isLikelyAudio && val > 0 && val < 16000) {
+            console.log(`[Netflix 4K] DefProp: ${prop} ${val} -> 16000`);
+            descriptor = { ...descriptor, value: 16000 };
+          }
+        }
+        if (lk.includes('height') && !lk.includes('min') && val >= 720 && val < 2160) {
+          console.log(`[Netflix 4K] DefProp: ${prop} ${val} -> 2160`);
+          descriptor = { ...descriptor, value: 2160 };
+        }
+        if (lk.includes('width') && !lk.includes('min') && val >= 1280 && val < 3840) {
+          console.log(`[Netflix 4K] DefProp: ${prop} ${val} -> 3840`);
+          descriptor = { ...descriptor, value: 3840 };
         }
       }
 
-      if (lowerProp.includes('maxheight') || lowerProp === 'maxvideoheight') {
-        if (descriptor.value !== undefined && typeof descriptor.value === 'number') {
-          console.log('[Netflix 4K] Override: maxHeight', descriptor.value, '-> 2160');
-          descriptor.value = 2160;
-        }
-      }
-
-      if (lowerProp.includes('maxwidth') || lowerProp === 'maxvideowidth') {
-        if (descriptor.value !== undefined && typeof descriptor.value === 'number') {
-          console.log('[Netflix 4K] Override: maxWidth', descriptor.value, '-> 3840');
-          descriptor.value = 3840;
-        }
-      }
-
-      if (lowerProp === 'hdcp' || lowerProp === 'hdcpversion') {
-        if (descriptor.value !== undefined) {
-          descriptor.value = '2.2';
-        }
+      if (typeof val === 'string' && (lk === 'hdcp' || lk.includes('hdcp'))) {
+        descriptor = { ...descriptor, value: '2.2' };
       }
     }
 
     return originalDefineProperty.call(this, obj, prop, descriptor);
   };
 
+  // Also intercept defineProperties (plural)
+  Object.defineProperties = function(obj, props) {
+    for (const prop of Object.keys(props)) {
+      const lk = prop.toLowerCase();
+      const desc = props[prop];
+      if (desc && desc.value !== undefined) {
+        const val = desc.value;
+        if (typeof val === 'number') {
+          if ((lk.includes('bitrate') || lk.includes('bandwidth')) && !lk.includes('min')) {
+            const isAudio = lk === 'abitrate' || lk.includes('audio');
+            const isLikelyAudio = val < 500 && !lk.includes('video') && !lk.includes('max') && !lk.includes('init');
+            if (!isAudio && !isLikelyAudio && val > 0 && val < 16000) {
+              desc.value = 16000;
+            }
+          }
+          if (lk.includes('height') && !lk.includes('min') && val >= 720 && val < 2160) {
+            desc.value = 2160;
+          }
+          if (lk.includes('width') && !lk.includes('min') && val >= 1280 && val < 3840) {
+            desc.value = 3840;
+          }
+        }
+      }
+    }
+    return originalDefineProperties.call(this, obj, props);
+  };
+
   // ============================================
-  // 10. CONFIG OBJECT PROXY
+  // 11. INTERCEPT OBJECT.ASSIGN
+  // ============================================
+
+  const originalAssign = Object.assign;
+  Object.assign = function(target, ...sources) {
+    const result = originalAssign.call(this, target, ...sources);
+    if (result && typeof result === 'object') {
+      // Quick check if this looks like a Netflix config object
+      try {
+        const keys = Object.keys(result);
+        if (keys.some(k => {
+          const lk = k.toLowerCase();
+          return lk.includes('bitrate') || lk.includes('maxheight') ||
+                 lk.includes('maxwidth') || lk.includes('maxresolution') ||
+                 lk.includes('videoprofile') || lk.includes('hdcp');
+        })) {
+          patchConfigValues(result);
+        }
+      } catch(e) {}
+    }
+    return result;
+  };
+
+  // ============================================
+  // 12. CONFIG OBJECT PROXY
   // ============================================
 
   const createConfigProxy = (target, name) => {
@@ -315,16 +439,13 @@
       set(obj, prop, value) {
         const lowerProp = String(prop).toLowerCase();
 
-        if (lowerProp === 'maxbitrate' && typeof value === 'number' && value < 16000) {
+        if ((lowerProp.includes('bitrate') || lowerProp.includes('bandwidth')) && typeof value === 'number' && !lowerProp.includes('audio') && !lowerProp.includes('min') && value < 16000) {
           value = 16000;
         }
-        if (lowerProp === 'maxvideobitrate' && typeof value === 'number' && value < 16000) {
-          value = 16000;
-        }
-        if (lowerProp.includes('height') && typeof value === 'number' && value < 2160 && value > 720) {
+        if (lowerProp.includes('height') && typeof value === 'number' && !lowerProp.includes('min') && value >= 720 && value < 2160) {
           value = 2160;
         }
-        if (lowerProp.includes('width') && typeof value === 'number' && value < 3840 && value > 1280) {
+        if (lowerProp.includes('width') && typeof value === 'number' && !lowerProp.includes('min') && value >= 1280 && value < 3840) {
           value = 3840;
         }
 
@@ -335,10 +456,9 @@
         const value = obj[prop];
         const lowerProp = String(prop).toLowerCase();
 
-        if (lowerProp === 'maxbitrate') return 16000;
-        if (lowerProp === 'maxvideobitrate') return 16000;
-        if (lowerProp === 'maxvideoheight') return 2160;
-        if (lowerProp === 'maxvideowidth') return 3840;
+        if (lowerProp === 'maxbitrate' || lowerProp === 'maxvideobitrate') return Math.max(value || 0, 16000);
+        if (lowerProp === 'maxvideoheight' || lowerProp === 'maxheight') return 2160;
+        if (lowerProp === 'maxvideowidth' || lowerProp === 'maxwidth') return 3840;
         if (lowerProp === 'hdcpversion' || lowerProp === 'hdcp') return '2.2';
 
         return value;
@@ -347,7 +467,7 @@
   };
 
   // ============================================
-  // 11. CADMIUM PLAYER HOOK
+  // 13. CADMIUM PLAYER HOOK
   // ============================================
 
   let cadmiumHooked = false;
@@ -355,39 +475,226 @@
   const hookCadmium = () => {
     if (cadmiumHooked) return;
 
-    if (window.netflix) {
-      if (window.netflix.player) {
-        cadmiumHooked = true;
-        console.log('[Netflix 4K] Hooked Netflix Cadmium player');
+    if (window.netflix && window.netflix.player) {
+      const player = window.netflix.player;
+      let methodsWrapped = 0;
 
-        const player = window.netflix.player;
+      // Deep patch the player object itself
+      patchConfigValues(player);
 
-        ['create', 'configure', 'getConfiguration', 'getConfig'].forEach(method => {
-          if (typeof player[method] === 'function') {
-            const original = player[method].bind(player);
-            player[method] = function(...args) {
-              const result = original(...args);
+      // Wrap ALL methods on the player - both args and return values get patched
+      let methodNames;
+      try { methodNames = Object.getOwnPropertyNames(player); } catch(e) { methodNames = Object.keys(player); }
 
-              if (result && typeof result === 'object') {
-                if (result.maxBitrate !== undefined) result.maxBitrate = 16000;
-                if (result.maxVideoBitrate !== undefined) result.maxVideoBitrate = 16000;
-                if (result.maxVideoHeight !== undefined) result.maxVideoHeight = 2160;
-                if (result.maxVideoWidth !== undefined) result.maxVideoWidth = 3840;
-                if (result.profiles !== undefined && Array.isArray(result.profiles)) {
-                  result.profiles = [...NETFLIX_4K_PROFILES, ...result.profiles];
-                }
+      for (const method of methodNames) {
+        try {
+          if (typeof player[method] !== 'function') continue;
+
+          const original = player[method].bind(player);
+          player[method] = function(...args) {
+            // Patch config arguments going in
+            for (const arg of args) {
+              if (arg && typeof arg === 'object') {
+                patchConfigValues(arg);
               }
+            }
 
-              return result;
-            };
-          }
-        });
+            const result = original(...args);
+
+            // Patch config objects coming out
+            if (result && typeof result === 'object') {
+              // Handle promises
+              if (typeof result.then === 'function') {
+                return result.then(r => {
+                  if (r && typeof r === 'object') patchConfigValues(r);
+                  return r;
+                });
+              }
+              patchConfigValues(result);
+            }
+
+            return result;
+          };
+          methodsWrapped++;
+        } catch(e) {}
       }
+
+      cadmiumHooked = true;
+      console.log(`[Netflix 4K] Hooked Netflix Cadmium player (${methodsWrapped} methods wrapped)`);
+    }
+
+    // Also deep-patch the entire netflix namespace for config values
+    if (window.netflix) {
+      try {
+        const walkNetflix = (obj, depth = 0) => {
+          if (!obj || typeof obj !== 'object' || depth > 3) return;
+          patchConfigValues(obj);
+          for (const key of Object.keys(obj)) {
+            try {
+              if (obj[key] && typeof obj[key] === 'object' && key !== 'player') {
+                walkNetflix(obj[key], depth + 1);
+              }
+            } catch(e) {}
+          }
+        };
+        walkNetflix(window.netflix);
+      } catch(e) {}
     }
   };
 
   // ============================================
-  // 12. INTERCEPT JSON PARSE
+  // 14. INTERCEPT JSON.STRINGIFY (manifest request injection)
+  // ============================================
+
+  const originalJSONStringify = JSON.stringify;
+  JSON.stringify = function(value, replacer, space) {
+    // First pass: stringify normally
+    let result = originalJSONStringify.call(this, value, replacer, space);
+
+    // Check the OUTPUT string for Netflix manifest keywords
+    // (Netflix may use custom serializers that skip JSON.stringify for the top-level object
+    //  but still stringify sub-objects — or the object structure may differ from what we expect)
+    if (typeof result === 'string' && value && typeof value === 'object') {
+      try {
+        const hasProfiles = result.includes('dash-cenc') || result.includes('hevc-main') ||
+                            result.includes('vp9-profile') || result.includes('av1-main') ||
+                            result.includes('playready-h264');
+        const hasManifestFields = result.includes('viewableId') || result.includes('lookupType') ||
+                                  result.includes('"method":"manifest"');
+
+        if (hasProfiles || hasManifestFields) {
+          let modified = false;
+
+          // Inject 4K profiles
+          if (Array.isArray(value.profiles)) {
+            const existing = new Set(value.profiles);
+            const toAdd = NETFLIX_4K_PROFILES.filter(p => !existing.has(p));
+            if (toAdd.length > 0) {
+              value.profiles = [...toAdd, ...value.profiles];
+              modified = true;
+              console.log(`[Netflix 4K] Injected ${toAdd.length} 4K profiles via stringify`);
+            }
+          }
+
+          // Ensure HDCP 2.2
+          if (Array.isArray(value.videoOutputInfo)) {
+            for (const info of value.videoOutputInfo) {
+              if (info && typeof info === 'object') {
+                info.supportedHdcpVersions = ['2.2', '2.1', '2.0', '1.4'];
+                info.isHdcpEngaged = true;
+                modified = true;
+              }
+            }
+          }
+
+          // Patch resolution/bitrate caps
+          patchConfigValues(value);
+
+          if (modified) {
+            result = originalJSONStringify.call(this, value, replacer, space);
+            console.log('[Netflix 4K] Manifest request modified via stringify');
+          }
+        }
+      } catch(e) {}
+    }
+
+    return result;
+  };
+
+  // ============================================
+  // 14b. INTERCEPT TextEncoder (catches custom serializers before MSL encryption)
+  // ============================================
+
+  const origTextEncoderEncode = TextEncoder.prototype.encode;
+  TextEncoder.prototype.encode = function(input) {
+    if (typeof input === 'string' && input.length > 100) {
+      // Check for manifest request data (pre-encryption plaintext)
+      if (input.includes('"profiles"') || input.includes('"viewableIds"') || input.includes('"lookupType"')) {
+        try {
+          const json = JSON.parse(input);
+          let modified = false;
+
+          // Inject 4K profiles
+          if (Array.isArray(json.profiles)) {
+            const existing = new Set(json.profiles);
+            const toAdd = NETFLIX_4K_PROFILES.filter(p => !existing.has(p));
+            if (toAdd.length > 0) {
+              json.profiles = [...toAdd, ...json.profiles];
+              modified = true;
+              console.log(`[Netflix 4K] Injected ${toAdd.length} 4K profiles via TextEncoder`);
+            }
+          }
+
+          // Ensure HDCP 2.2
+          if (Array.isArray(json.videoOutputInfo)) {
+            for (const info of json.videoOutputInfo) {
+              if (info && typeof info === 'object') {
+                info.supportedHdcpVersions = ['2.2', '2.1', '2.0', '1.4'];
+                info.isHdcpEngaged = true;
+                modified = true;
+              }
+            }
+          }
+
+          // Patch caps
+          patchConfigValues(json);
+
+          if (modified) {
+            input = originalJSONStringify.call(JSON, json);
+            console.log('[Netflix 4K] Modified manifest request before encryption');
+          }
+        } catch(e) {
+          // Not valid JSON — could be MSL payload chunk with base64 data
+          // Try to find and modify the inner data field
+          try {
+            if (input.includes('"data"') && (input.includes('"sequencenumber"') || input.includes('"messageid"'))) {
+              const chunk = JSON.parse(input);
+              if (chunk.data) {
+                let innerText = atob(chunk.data);
+                // Check if it's a manifest request
+                if (innerText.includes('"profiles"') || innerText.includes('"viewableIds"')) {
+                  const innerJson = JSON.parse(innerText);
+                  let innerModified = false;
+
+                  if (Array.isArray(innerJson.profiles)) {
+                    const existing = new Set(innerJson.profiles);
+                    const toAdd = NETFLIX_4K_PROFILES.filter(p => !existing.has(p));
+                    if (toAdd.length > 0) {
+                      innerJson.profiles = [...toAdd, ...innerJson.profiles];
+                      innerModified = true;
+                      console.log(`[Netflix 4K] Injected ${toAdd.length} 4K profiles in MSL payload`);
+                    }
+                  }
+
+                  if (Array.isArray(innerJson.videoOutputInfo)) {
+                    for (const info of innerJson.videoOutputInfo) {
+                      if (info && typeof info === 'object') {
+                        info.supportedHdcpVersions = ['2.2', '2.1', '2.0', '1.4'];
+                        info.isHdcpEngaged = true;
+                        innerModified = true;
+                      }
+                    }
+                  }
+
+                  patchConfigValues(innerJson);
+
+                  if (innerModified) {
+                    chunk.data = btoa(originalJSONStringify.call(JSON, innerJson));
+                    input = originalJSONStringify.call(JSON, chunk);
+                    console.log('[Netflix 4K] Modified MSL payload chunk');
+                  }
+                }
+              }
+            }
+          } catch(e2) {}
+        }
+      }
+    }
+    return origTextEncoderEncode.call(this, input);
+  };
+
+  // ============================================
+  // 15. INTERCEPT JSON PARSE
   // ============================================
 
   const originalJSONParse = JSON.parse;
@@ -395,7 +702,23 @@
     const result = originalJSONParse.call(this, text, reviver);
 
     if (result && typeof result === 'object') {
-      // Modify resolution caps if found
+      // Only deep-patch if this looks like a Netflix config/manifest object
+      try {
+        const keys = Object.keys(result);
+        const isConfig = keys.some(k => {
+          const lk = k.toLowerCase();
+          return lk.includes('bitrate') || lk.includes('resolution') ||
+                 lk.includes('maxheight') || lk.includes('maxwidth') ||
+                 lk.includes('profile') || lk.includes('drm') ||
+                 lk.includes('manifest') || lk.includes('playback') ||
+                 lk.includes('video');
+        });
+        if (isConfig) {
+          patchConfigValues(result);
+        }
+      } catch(e) {}
+
+      // Also catch the specific maxResolution pattern
       if (result.maxResolution) {
         result.maxResolution = { width: 3840, height: 2160 };
       }
@@ -405,7 +728,7 @@
   };
 
   // ============================================
-  // 13. VIDEO ELEMENT MONITORING
+  // 15. VIDEO ELEMENT MONITORING
   // ============================================
 
   const videoObserver = new MutationObserver((mutations) => {
@@ -450,7 +773,7 @@
   });
 
   // ============================================
-  // 14. SPA NAVIGATION HANDLING
+  // 16. SPA NAVIGATION HANDLING
   // ============================================
 
   let lastWatchId = null;
@@ -464,6 +787,8 @@
   const forceRehook = (reason) => {
     console.log(`[Netflix 4K] Rehook: ${reason}`);
     cadmiumHooked = false;
+    // Clear patched cache so objects get re-patched
+    // (WeakSet doesn't have clear(), but new objects will be untracked)
 
     const delays = [100, 300, 500, 1000, 2000];
     delays.forEach(delay => {
@@ -542,22 +867,34 @@
   });
 
   // ============================================
-  // 15. INITIALIZATION
+  // 17. INITIALIZATION
   // ============================================
 
   // Start observing
-  if (document.body) {
-    videoObserver.observe(document.body, { childList: true, subtree: true });
-    videoCreationObserver.observe(document.body, { childList: true, subtree: true });
-  } else {
-    document.addEventListener('DOMContentLoaded', () => {
+  const startObservers = () => {
+    if (document.body) {
       videoObserver.observe(document.body, { childList: true, subtree: true });
       videoCreationObserver.observe(document.body, { childList: true, subtree: true });
-    });
-  }
+    } else {
+      // Body doesn't exist yet at document_start, wait for it
+      const bodyWaiter = new MutationObserver(() => {
+        if (document.body) {
+          bodyWaiter.disconnect();
+          videoObserver.observe(document.body, { childList: true, subtree: true });
+          videoCreationObserver.observe(document.body, { childList: true, subtree: true });
+        }
+      });
+      bodyWaiter.observe(document.documentElement || document, { childList: true, subtree: true });
+    }
+  };
 
-  // Periodic Cadmium hook attempts
+  startObservers();
+
+  // Periodic Cadmium hook attempts + deep patching
   const hookInterval = setInterval(() => {
+    if (window.netflix) {
+      patchConfigValues(window.netflix);
+    }
     hookCadmium();
     if (cadmiumHooked) clearInterval(hookInterval);
   }, 500);
